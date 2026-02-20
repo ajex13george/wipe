@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wireless Pentesting – The Ultimate Guide</title>
+    <title>WIPE - wireless pentesting guide</title>
     <!-- Importing Google Fonts for Typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -480,7 +480,7 @@
     <!-- HERO SECTION -->
     <header class="hero">
         <div class="container hero-content">
-            <h1>Wireless Pentesting<br>Red Team Guide</h1>
+            <h1>Wireless Pentesting</h1>
             <p>Master the art of offensive wireless security. From 802.11 frames to WPA3 exploitation.</p>
             <a href="#intro" class="btn">Explore Guide</a>
         </div>
@@ -629,7 +629,7 @@
                 
                 <div class="card-grid">
                     <!-- Link Box 1: Update href with your actual file path -->
-                    <a href="handshake_sim.html" class="card simulation-link">
+                    <a href="/wipe-hs" class="card simulation-link">
                         <div style="text-align: center;">
                             <i class="fa-solid fa-terminal" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
                             <h3>Handshake & Deauth</h3>
@@ -639,10 +639,10 @@
                     </a>
 
                     <!-- Link Box 2: Update href with your actual file path -->
-                    <a href="attack_chain.html" class="card simulation-link">
+                    <a href="/wipe-sim" class="card simulation-link">
                         <div style="text-align: center;">
                             <i class="fa-solid fa-forward" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
-                            <h3>Full Attack Chain</h3>
+                            <h3>Simulate your wipe lab</h3>
                             <p>Step-by-step complete attack vector simulation from recon to cracking.</p>
                             <span class="btn" style="margin-top: 20px; font-size: 0.8rem; border-color: var(--primary); color: var(--primary);">Launch Lab 02</span>
                         </div>
@@ -735,59 +735,6 @@
                 </div>
             </div>
         </section>
-
-        <!-- SECTION 8: LAB SETUP -->
-        <section id="lab">
-            <div class="container">
-                <h2 class="section-title">Building Your Lab</h2>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start;">
-                    <div>
-                        <h3><i class="fa-solid fa-microchip"></i> Hardware Requirements</h3>
-                        <p style="margin-bottom: 20px;">To practice, you need a WiFi adapter that supports <strong>Monitor Mode</strong> and <strong>Packet Injection</strong>. Not all internal laptop cards support this.</p>
-                        <ul class="lab-list">
-                            <li><i class="fa-solid fa-check"></i> <strong>Alfa AWUS036NHA</strong> (Atheros AR9271) - Stable, good for beginners.</li>
-                            <li><i class="fa-solid fa-check"></i> <strong>Alfa AWUS036ACH</strong> (Realtek RTL8812AU) - Supports 5GHz and AC standards.</li>
-                            <li><i class="fa-solid fa-check"></i> <strong>Panda PAU09</strong> - Dual-band, plug-and-play on Linux.</li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h3><i class="fa-solid fa-flask"></i> Virtual Environment</h3>
-                        <ul class="lab-list">
-                            <li><i class="fa-solid fa-desktop"></i> <strong>VirtualBox / VMware:</strong> Run Kali Linux as a VM.</li>
-                            <li><i class="fa-solid fa-usb"></i> <strong>USB Pass-through:</strong> Essential setting to connect your external WiFi adapter to the VM.</li>
-                            <li><i class="fa-solid fa-book"></i> <strong>Wordlists:</strong> Download 'Rockyou.txt' or 'SecLists' for dictionary attacks.</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- SECTION 9: DEFENSE -->
-        <section id="defense">
-            <div class="container">
-                <h2 class="section-title">Blue Team Defense</h2>
-                <p style="text-align: center; margin-bottom: 30px;">How to secure networks against the attacks listed above.</p>
-                <div class="card-grid">
-                    <div class="card" style="border-color: var(--accent);">
-                        <h3><i class="fa-solid fa-shield-halved" style="color:var(--accent)"></i> Use WPA3</h3>
-                        <p>If hardware supports it, switch to WPA3-Personal. It prevents offline dictionary attacks on captured handshakes.</p>
-                    </div>
-                    <div class="card" style="border-color: var(--accent);">
-                        <h3><i class="fa-solid fa-ban" style="color:var(--accent)"></i> Disable WPS</h3>
-                        <p>Wi-Fi Protected Setup is a major security hole. Disable it immediately on all routers.</p>
-                    </div>
-                    <div class="card" style="border-color: var(--accent);">
-                        <h3><i class="fa-solid fa-key" style="color:var(--accent)"></i> Strong Passwords</h3>
-                        <p>For WPA2, the only defense against cracking is a long (20+ chars), random password that isn't in any wordlist.</p>
-                    </div>
-                    <div class="card" style="border-color: var(--accent);">
-                        <h3><i class="fa-solid fa-network-wired" style="color:var(--accent)"></i> Network Segmentation</h3>
-                        <p>Put IoT devices on a separate Guest VLAN. If a smart bulb is compromised, your PC remains safe.</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
         <!-- SECTION 10: LEGAL -->
         <section id="legal" style="background: rgba(255, 23, 68, 0.05);">
             <div class="container">
