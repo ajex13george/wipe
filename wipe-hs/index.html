@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WPA2 Authentication & Attack Simulation Lab</title>
+    <!-- Tailwind CSS for Layout -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@400;600;800&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* Custom Styles for Cybersecurity Theme */
+        :root {
+            --neon-blue: #00f3ff;
+            --neon-green: #0aff0a;
+            --neon-red: #ff003c;
+            --bg-dark: #050505;
+            --panel-bg: #111111;
+            --border-color: #333;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: #e0e0e0;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden; /* Prevent scroll during animations */
+        }
+
+        /* CRT/Scanline Effect Overlay */
+        /* Reduced opacity slightly for cleaner look */
+        .scanlines {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        /* Node Styling - Larger & More Realistic Cards */
+        .node {
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 10;
+        }
+
+        .node-card {
+            background: rgba(20, 20, 25, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 220px;
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+        
+        .node:hover .node-card {
+            transform: translateY(-5px);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .node-icon {
+            font-size: 5rem; /* Much larger */
+            margin-bottom: 1rem;
+            filter: drop-shadow(0 0 15px rgba(0,0,0,0.5));
+        }
+
+        .ap-node .node-card { border-top: 4px solid var(--neon-blue); }
+        .ap-node .node-icon { color: var(--neon-blue); text-shadow: 0 0 20px var(--neon-blue); }
+        
+        .client-node .node-card { border-top: 4px solid #fff; cursor: pointer; }
+        .client-node .node-icon { color: #fff; text-shadow: 0 0 20px rgba(255,255,255,0.5); }
+        .client-node:hover .node-icon { color: var(--neon-blue); }
+        
+        .attacker-node .node-card { border-top: 4px solid var(--neon-red); }
+        .attacker-node .node-icon { color: var(--neon-red); text-shadow: 0 0 20px var(--neon-red); }
+
+        /* Tech Text Style */
+        .tech-font { font-family: 'Orbitron', sans-serif; }
+
+        /* Signal Waves Animation - Adjusted for larger nodes */
+        .signal-wave {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            border: 2px solid var(--neon-blue);
+            border-radius: 50%;
+            opacity: 0;
+            animation: ripple 2.5s infinite;
+            z-index: -1;
+            /* Added glow for visibility */
+            box-shadow: 0 0 15px var(--neon-blue); 
+        }
+        
+        .attacker-node .signal-wave {
+            border-color: var(--neon-red);
+            box-shadow: 0 0 15px var(--neon-red); /* Added glow */
+            animation: ripple-fast 0.8s infinite;
+        }
+
+        @keyframes ripple {
+            0% { width: 0; height: 0; opacity: 0.8; border-width: 6px; } /* Increased opacity and thickness */
+            100% { width: 500px; height: 500px; opacity: 0; border-width: 0px; } /* Increased spread */
+        }
+
+        @keyframes ripple-fast {
+            0% { width: 0; height: 0; opacity: 0.9; border-width: 6px; }
+            100% { width: 600px; height: 600px; opacity: 0; border-width: 0px; }
+        }
+
+        /* Packet Animation */
+        .packet {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background-color: #fff;
+            border-radius: 50%;
+            box-shadow: 
+                0 0 8px var(--neon-green),
+                0 0 15px var(--neon-green),
+                0 0 30px var(--neon-green);
+            z-index: 50;
+            pointer-events: none;
+            animation: packetPulse 0.5s infinite alternate;
+        }
+        
+        .packet.mgmt { 
+            box-shadow: 
+                0 0 8px var(--neon-blue),
+                0 0 15px var(--neon-blue),
+                0 0 30px var(--neon-blue);
+        }
+        
+        .packet.attack { 
+            box-shadow: 
+                0 0 8px var(--neon-red),
+                0 0 15px var(--neon-red),
+                0 0 30px var(--neon-red);
+        }
+
+        @keyframes packetPulse {
+            from { transform: scale(1); opacity: 0.9; }
+            to { transform: scale(1.5); opacity: 1; }
+        }
+
+        /* Console/Logs */
+        .console-font {
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+        }
+
+        .log-entry {
+            margin-bottom: 6px;
+            border-left: 3px solid transparent;
+            padding-left: 10px;
+            opacity: 0;
+            animation: fadeIn 0.3s forwards;
+        }
+        .log-entry.ap { border-color: var(--neon-blue); color: #a5f3fc; }
+        .log-entry.client { border-color: #fff; color: #fff; }
+        .log-entry.attacker { border-color: var(--neon-red); color: #fca5a5; }
+        .log-entry.sys { border-color: var(--neon-green); color: var(--neon-green); }
+
+        @keyframes fadeIn { to { opacity: 1; } }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        /* Modal */
+        .modal {
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+        }
+
+        .checkbox-wrapper input:checked + div {
+            background-color: var(--neon-green);
+        }
+        
+        .attack-toggle input:checked + div {
+            background-color: var(--neon-red);
+        }
+        
+        /* Cheat Sheet Styling */
+        .cheat-item {
+            border-bottom: 1px solid #222;
+            padding-bottom: 8px;
+            margin-bottom: 8px;
+        }
+        .cheat-item:last-child { border-bottom: none; }
+    </style>
+</head>
+<body class="h-screen flex flex-col">
+
+    <div class="scanlines"></div>
+
+    <!-- Header -->
+    <header class="bg-neutral-900 border-b border-neutral-800 p-4 flex justify-between items-center z-50 shadow-lg relative">
+        <div class="flex items-center gap-3">
+            <i class="fa-solid fa-shield-halved text-3xl text-cyan-400"></i>
+            <div>
+                <h1 class="text-2xl font-bold tracking-wider text-white tech-font">WPA2 <span class="text-cyan-400">SIM</span></h1>
+                <p class="text-[10px] text-gray-500 uppercase tracking-[0.2em]">Network Security Lab</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-6">
+            <!-- Restart Button -->
+            <button onclick="window.location.reload()" class="flex items-center gap-2 px-3 py-1 bg-neutral-800 hover:bg-neutral-700 text-gray-400 hover:text-white rounded border border-neutral-700 transition-colors">
+                <i class="fa-solid fa-rotate-right"></i>
+                <span class="text-xs font-bold uppercase">Reset</span>
+            </button>
+            
+            <div class="h-6 w-px bg-neutral-700"></div>
+
+            <!-- PMF Toggle -->
+            <label class="flex items-center cursor-pointer gap-3 group">
+                <div class="relative">
+                    <input type="checkbox" id="pmfToggle" class="sr-only">
+                    <div class="w-12 h-7 bg-gray-800 rounded-full shadow-inner border border-gray-700 transition-colors duration-300"></div>
+                    <div class="dot absolute w-5 h-5 bg-gray-400 rounded-full shadow left-1 top-1 transition transform duration-300"></div>
+                </div>
+                <span class="text-sm font-semibold text-gray-500 group-hover:text-white transition-colors">802.11w (PMF)</span>
+            </label>
+
+            <!-- Attack Mode Toggle -->
+            <label class="flex items-center cursor-pointer gap-3 group attack-toggle">
+                <div class="relative">
+                    <input type="checkbox" id="attackToggle" class="sr-only">
+                    <div class="w-12 h-7 bg-gray-800 rounded-full shadow-inner border border-gray-700 transition-colors duration-300"></div>
+                    <div class="dot absolute w-5 h-5 bg-gray-400 rounded-full shadow left-1 top-1 transition transform duration-300"></div>
+                </div>
+                <span class="text-sm font-semibold text-gray-500 group-hover:text-red-400 transition-colors">Attack Mode</span>
+            </label>
+        </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="flex-1 flex overflow-hidden relative">
+        
+        <!-- Simulation Stage (Left/Center) -->
+        <div class="flex-1 relative bg-neutral-950 bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')]" id="stage">
+            
+            <!-- Connection Status Overlay -->
+            <div id="connectionStatus" class="absolute top-6 left-1/2 transform -translate-x-1/2 bg-black/80 border border-neutral-700 px-6 py-2 rounded-full text-sm font-mono text-gray-400 z-40 transition-all opacity-0 backdrop-blur-md">
+                <span class="status-dot inline-block w-2 h-2 rounded-full bg-gray-500 mr-2"></span>
+                <span id="statusText">Disconnected</span>
+            </div>
+
+            <!-- AP Node -->
+            <div class="absolute top-1/4 left-16 node ap-node text-center" id="node-ap">
+                <div class="signal-wave"></div>
+                <div class="node-card">
+                    <i class="fa-solid fa-server node-icon"></i>
+                    <div class="text-cyan-400 font-bold text-lg tech-font">TERMINAL1</div>
+                    <div class="text-gray-500 text-xs mt-1">CH: 6 | WPA2-AES</div>
+                    <div class="text-gray-600 font-mono text-[10px] mt-2 bg-black px-2 py-1 rounded border border-gray-800">AA:BB:CC:11:22:33</div>
+                </div>
+            </div>
+
+            <!-- Client Node -->
+            <div class="absolute top-1/4 right-16 node client-node text-center group" id="node-client" onclick="openWifiModal()">
+                <div id="client-wave" class="signal-wave hidden"></div>
+                <div class="relative node-card">
+                    <div class="absolute -top-3 -right-3 bg-green-500 text-black text-[10px] font-bold px-2 py-1 rounded-full animate-bounce shadow-lg z-20 border border-white" id="connect-badge">CLICK TO CONNECT</div>
+                    <i class="fa-solid fa-laptop-code node-icon group-hover:text-cyan-200 transition-colors"></i>
+                    <div class="text-white font-bold text-lg tech-font">Client Station</div>
+                    <div class="text-gray-500 text-xs mt-1" id="client-state">State: Disconnected</div>
+                    <div class="text-gray-600 font-mono text-[10px] mt-2 bg-black px-2 py-1 rounded border border-gray-800">11:22:33:44:55:66</div>
+                </div>
+            </div>
+
+            <!-- Attacker Node (Hidden initially) -->
+            <div class="absolute bottom-16 left-1/2 transform -translate-x-1/2 node attacker-node text-center transition-all duration-700 opacity-0 translate-y-20" id="node-attacker">
+                <div class="signal-wave"></div>
+                <div class="node-card border-red-900/50 bg-neutral-900/90">
+                    <i class="fa-solid fa-user-secret node-icon"></i>
+                    <div class="text-red-500 font-bold text-lg tech-font">ATTACKER</div>
+                    <div class="text-gray-500 text-xs mt-1">Kali Linux • Monitor Mode</div>
+                    <div class="text-gray-600 font-mono text-[10px] mt-2 bg-black px-2 py-1 rounded border border-red-900/30">wlan0mon</div>
+                </div>
+            </div>
+
+            <!-- Removed Key Hierarchy Visualization -->
+
+        </div>
+
+        <!-- Right Side Panel (Logs & Cheat Sheet) -->
+        <aside class="w-[400px] bg-neutral-900 border-l border-neutral-800 flex flex-col z-20 shadow-2xl">
+            
+            <!-- Packet Log -->
+            <div class="h-1/2 flex flex-col border-b border-neutral-800">
+                <div class="bg-neutral-800 px-4 py-3 text-xs font-bold text-gray-300 flex justify-between tracking-wider border-b border-black">
+                    <span><i class="fa-solid fa-terminal mr-2 text-cyan-500"></i>PACKET SNIFFER</span>
+                    <span class="text-green-500 animate-pulse">● LIVE</span>
+                </div>
+                <div class="flex-1 overflow-y-auto p-4 console-font bg-black" id="logContainer">
+                    <div class="log-entry sys">[SYSTEM] Simulation Environment Initialized.</div>
+                    <div class="log-entry ap">[AP] Broadcasting Beacon (SSID=TERMINAL1)</div>
+                </div>
+            </div>
+
+            <!-- Cheat Sheet Panel -->
+            <div class="h-1/2 flex flex-col bg-neutral-900">
+                <div class="bg-neutral-800 px-4 py-3 text-xs font-bold text-gray-300 flex justify-between tracking-wider border-b border-black">
+                    <span><i class="fa-solid fa-list-check mr-2 text-purple-500"></i>CHEAT SHEET</span>
+                </div>
+                <div class="flex-1 overflow-y-auto p-4">
+                    
+                    <div class="cheat-item">
+                        <div class="text-cyan-400 font-bold font-mono text-xs">SSID</div>
+                        <div class="text-gray-500 text-[10px]">Service Set Identifier (Network Name)</div>
+                    </div>
+
+                    <div class="cheat-item">
+                        <div class="text-cyan-400 font-bold font-mono text-xs">BSSID</div>
+                        <div class="text-gray-500 text-[10px]">Basic Service Set Identifier (MAC Address)</div>
+                    </div>
+
+                    <div class="cheat-item">
+                        <div class="text-green-400 font-bold font-mono text-xs">PSK</div>
+                        <div class="text-gray-500 text-[10px]">Pre-Shared Key (WiFi Password)</div>
+                    </div>
+
+                    <div class="cheat-item">
+                        <div class="text-green-400 font-bold font-mono text-xs">PMK</div>
+                        <div class="text-gray-500 text-[10px]">Pairwise Master Key (Derived from PSK + SSID)</div>
+                    </div>
+
+                    <div class="cheat-item">
+                        <div class="text-green-400 font-bold font-mono text-xs">PTK</div>
+                        <div class="text-gray-500 text-[10px]">Pairwise Transient Key (Session Encryption Key)</div>
+                    </div>
+
+                    <div class="cheat-item">
+                        <div class="text-green-400 font-bold font-mono text-xs">GTK</div>
+                        <div class="text-gray-500 text-[10px]">Group Temporal Key (Multicast Encryption)</div>
+                    </div>
+
+                    <div class="cheat-item">
+                        <div class="text-purple-400 font-bold font-mono text-xs">MIC</div>
+                        <div class="text-gray-500 text-[10px]">Message Integrity Code (Anti-tamper Hash)</div>
+                    </div>
+
+                    <div class="cheat-item">
+                        <div class="text-purple-400 font-bold font-mono text-xs">ANonce</div>
+                        <div class="text-gray-500 text-[10px]">Authenticator Nonce (Random Num from AP)</div>
+                    </div>
+
+                    <div class="cheat-item">
+                        <div class="text-purple-400 font-bold font-mono text-xs">SNonce</div>
+                        <div class="text-gray-500 text-[10px]">Supplicant Nonce (Random Num from Client)</div>
+                    </div>
+
+                    <div class="cheat-item">
+                        <div class="text-red-400 font-bold font-mono text-xs">EAPOL</div>
+                        <div class="text-gray-500 text-[10px]">Extensible Authentication Protocol over LAN</div>
+                    </div>
+                    
+                    <div class="cheat-item">
+                        <div class="text-red-400 font-bold font-mono text-xs">PMF</div>
+                        <div class="text-gray-500 text-[10px]">Protected Management Frames (802.11w)</div>
+                    </div>
+
+                </div>
+            </div>
+        </aside>
+
+    </main>
+
+    <!-- Disclaimer Footer -->
+    <footer class="bg-black border-t border-red-900/30 p-2 text-center">
+        <p class="text-[10px] text-red-800 font-mono uppercase tracking-widest">
+            <i class="fa-solid fa-triangle-exclamation mr-1"></i> 
+            Educational Simulation Only. No real network packets are generated.
+        </p>
+    </footer>
+
+    <!-- WiFi Modal -->
+    <!-- UPDATED Z-INDEX TO 1000 to sit above scanlines -->
+    <div id="wifiModal" class="fixed inset-0 modal z-[1000] hidden flex items-center justify-center">
+        <div class="bg-neutral-100 rounded-xl shadow-2xl w-96 overflow-hidden text-gray-800 scale-95 opacity-0 transition-all duration-300" id="wifiModalContent">
+            <div class="bg-gray-200 px-4 py-3 border-b border-gray-300 flex justify-between items-center">
+                <h3 class="font-bold text-sm text-gray-700">Select Network</h3>
+                <button onclick="closeWifiModal()" class="text-gray-500 hover:text-gray-800"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-0 max-h-60 overflow-y-auto">
+                <div class="p-4 hover:bg-blue-50 cursor-pointer border-b border-gray-200 bg-blue-100 transition-colors">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="font-bold text-base text-gray-900">TERMINAL1</span>
+                        <i class="fa-solid fa-lock text-xs text-gray-600"></i>
+                    </div>
+                    <div class="text-[11px] text-gray-600 font-medium">WPA2-Personal • Signal 98%</div>
+                </div>
+                <div class="p-4 hover:bg-gray-50 cursor-pointer opacity-50 border-b border-gray-200">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="font-bold text-base text-gray-800">Starbucks_WiFi</span>
+                        <i class="fa-solid fa-globe text-xs text-gray-500"></i>
+                    </div>
+                    <div class="text-[11px] text-gray-500">Open • Signal 45%</div>
+                </div>
+            </div>
+            <div class="p-5 bg-gray-50 border-t border-gray-200">
+                <label class="block text-xs font-bold mb-2 text-gray-600 uppercase tracking-wide">Password for "TERMINAL1":</label>
+                <input type="password" id="wifiPassword" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm mb-4 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 shadow-sm transition-all" placeholder="Enter security key">
+                <div class="flex justify-end gap-3">
+                    <button onclick="closeWifiModal()" class="px-4 py-2 rounded-md text-xs font-semibold text-gray-600 hover:bg-gray-200 transition-colors">Cancel</button>
+                    <button onclick="startConnection()" class="px-6 py-2 rounded-md text-xs bg-blue-600 text-white hover:bg-blue-700 font-bold shadow-md transform active:scale-95 transition-all">Connect</button>
+                </div>
+                <div id="passwordError" class="text-red-600 font-bold text-xs mt-3 hidden flex items-center bg-red-100 p-2 rounded border border-red-200">
+                    <i class="fa-solid fa-circle-exclamation mr-2"></i>
+                    <span>Incorrect Password.<br>MIC Mismatch detected.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Packet Container (Where JS injects moving dots) -->
+    <div id="packetLayer" class="absolute inset-0 pointer-events-none z-50"></div>
+
+    <script>
+        // --- State & Config ---
+        const state = {
+            isConnected: false,
+            isAttacking: false,
+            pmfEnabled: false,
+            handshakeCaptured: false,
+            apPassword: "OFFENSO@123", // Updated Password
+            dictionary: ["admin", "123456", "password", "OFFENSO@123", "secure", "qwerty"], // Added to dictionary
+            currentProcess: null // To store timeout IDs to cancel if needed
+        };
+
+        const nodes = {
+            ap: document.getElementById('node-ap'),
+            client: document.getElementById('node-client'),
+            attacker: document.getElementById('node-attacker')
+        };
+
+        const logs = document.getElementById('logContainer');
+
+        // --- Utility Functions ---
+
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function log(message, type = 'sys') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.innerText = message;
+            logs.appendChild(entry);
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        // --- Visual Effects ---
+
+        function createPacket(fromNode, toNode, type = 'normal') {
+            const layer = document.getElementById('packetLayer');
+            const packet = document.createElement('div');
+            
+            // Determine styling
+            packet.className = 'packet';
+            if (type === 'mgmt') packet.classList.add('mgmt');
+            if (type === 'attack') packet.classList.add('attack');
+
+            // Get coordinates (offset for center of the large cards)
+            const fromRect = fromNode.getBoundingClientRect();
+            const toRect = toNode.getBoundingClientRect();
+
+            // Calculate center points relative to the cards
+            const startX = fromRect.left + fromRect.width / 2;
+            const startY = fromRect.top + fromRect.height / 2;
+            const endX = toRect.left + toRect.width / 2;
+            const endY = toRect.top + toRect.height / 2;
+
+            // Set initial position
+            packet.style.left = `${startX}px`;
+            packet.style.top = `${startY}px`;
+            
+            layer.appendChild(packet);
+
+            // Animate
+            const duration = 1500; // Slower duration for visual clarity
+            const startTime = performance.now();
+
+            // Easing function: Ease-In-Out Quad
+            const easeInOutQuad = t => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+
+            function animate(time) {
+                let progress = (time - startTime) / duration;
+                if (progress > 1) progress = 1;
+
+                // Apply easing
+                const easedProgress = easeInOutQuad(progress);
+
+                const currentX = startX + (endX - startX) * easedProgress;
+                const currentY = startY + (endY - startY) * easedProgress;
+
+                packet.style.left = `${currentX}px`;
+                packet.style.top = `${currentY}px`;
+
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    packet.remove();
+                }
+            }
+
+            requestAnimationFrame(animate);
+            return delay(duration); // Return promise to await packet arrival
+        }
+
+        function setStatus(text, colorClass) {
+            const badge = document.getElementById('connectionStatus');
+            const dot = badge.querySelector('.status-dot');
+            const txt = document.getElementById('statusText');
+            
+            badge.style.opacity = '1';
+            txt.innerText = text;
+            
+            // Reset colors
+            dot.className = 'status-dot inline-block w-2 h-2 rounded-full mr-2';
+            dot.classList.add(colorClass);
+            
+            if(colorClass.includes('red')) {
+                badge.classList.add('border-red-500');
+            } else {
+                badge.classList.remove('border-red-500');
+            }
+        }
+
+        // --- Logic: Attack Mode ---
+
+        document.getElementById('attackToggle').addEventListener('change', async (e) => {
+            state.isAttacking = e.target.checked;
+            const attackerNode = document.getElementById('node-attacker');
+            
+            // Fixed Selectors
+            const toggleDot = document.querySelector('.attack-toggle .dot');
+            // The div containing the background color is the immediate sibling of the input
+            const toggleBg = document.querySelector('#attackToggle + div');
+            
+            if (state.isAttacking) {
+                // UI Toggle State
+                if(toggleDot) toggleDot.classList.add('translate-x-5');
+                if(toggleBg) {
+                    toggleBg.classList.remove('bg-gray-800');
+                    toggleBg.classList.add('bg-red-900');
+                }
+
+                attackerNode.classList.remove('opacity-0', 'translate-y-20');
+                log('[ATTACKER] Interface wlan0mon enabled. Monitor Mode active.', 'attacker');
+                
+                // If client is already connected, launch Deauth attack
+                if (state.isConnected) {
+                    await delay(1000);
+                    launchDeauthAttack();
+                }
+            } else {
+                // UI Toggle Reset
+                if(toggleDot) toggleDot.classList.remove('translate-x-5');
+                if(toggleBg) {
+                    toggleBg.classList.add('bg-gray-800');
+                    toggleBg.classList.remove('bg-red-900');
+                }
+
+                attackerNode.classList.add('opacity-0', 'translate-y-20');
+                log('[ATTACKER] Monitor Mode disabled.', 'sys');
+            }
+        });
+
+        // PMF Toggle Visuals
+        document.getElementById('pmfToggle').addEventListener('change', (e) => {
+            state.pmfEnabled = e.target.checked;
+            // Fixed Selectors
+            const toggleDot = document.querySelector('#pmfToggle + div + .dot');
+            const toggleBg = document.querySelector('#pmfToggle + div');
+
+            if(state.pmfEnabled) {
+                if(toggleDot) toggleDot.classList.add('translate-x-5');
+                if(toggleBg) {
+                    toggleBg.classList.remove('bg-gray-800');
+                    toggleBg.classList.add('bg-cyan-900');
+                }
+            } else {
+                if(toggleDot) toggleDot.classList.remove('translate-x-5');
+                if(toggleBg) {
+                    toggleBg.classList.add('bg-gray-800');
+                    toggleBg.classList.remove('bg-cyan-900');
+                }
+            }
+
+            log(`[AP] 802.11w Protected Management Frames (PMF) ${state.pmfEnabled ? 'ENABLED' : 'DISABLED'}`, 'sys');
+        });
+
+        async function launchDeauthAttack() {
+            if (!state.isAttacking || !state.isConnected) return;
+
+            log('[ATTACKER] Target found. Sending Deauthentication frames...', 'attacker');
+
+            // Visual: Rapid packets from Attacker to Client and AP
+            // MODIFIED: Specific flow: Attacker -> AP, then AP -> Client
+            for (let i = 0; i < 4; i++) {
+                // Packet 1: Attacker sends packet to AP (Spoofing Client)
+                createPacket(nodes.attacker, nodes.ap, 'attack');
+                await delay(600); // Wait for travel
+
+                // Packet 2: AP sends packet to Client (The Deauth)
+                createPacket(nodes.ap, nodes.client, 'attack');
+                await delay(600); // Wait for travel
+            }
+
+            if (state.pmfEnabled) {
+                log('[CLIENT] Management Frame Integrity Check Passed. Ignoring spoofed Deauth.', 'client');
+                log('[ATTACKER] Deauth failed. Target using PMF.', 'attacker');
+            } else {
+                log('[CLIENT] Deauthenticated by AP (Reason: Class 3 frame received).', 'client');
+                disconnectClient(true); // true = forced
+                
+                // Trigger auto-reconnect which leads to handshake capture
+                await delay(1000);
+                log('[CLIENT] Auto-reconnecting...', 'client');
+                // Re-run connection logic with known password
+                runConnectionSequence(state.apPassword, true);
+            }
+        }
+
+        // --- Logic: Connection & Handshake ---
+
+        function openWifiModal() {
+            if(state.isConnected && !state.isAttacking) return; // Already connected
+            const modal = document.getElementById('wifiModal');
+            const content = document.getElementById('wifiModalContent');
+            
+            modal.classList.remove('hidden');
+            // Animation triggers
+            setTimeout(() => {
+                content.classList.remove('scale-95', 'opacity-0');
+                content.classList.add('scale-100', 'opacity-100');
+            }, 10);
+            
+            document.getElementById('connect-badge').classList.add('hidden');
+        }
+
+        function closeWifiModal() {
+            const modal = document.getElementById('wifiModal');
+            const content = document.getElementById('wifiModalContent');
+            
+            content.classList.remove('scale-100', 'opacity-100');
+            content.classList.add('scale-95', 'opacity-0');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                document.getElementById('passwordError').classList.add('hidden');
+                document.getElementById('wifiPassword').value = '';
+            }, 200);
+        }
+
+        function disconnectClient(forced = false) {
+            state.isConnected = false;
+            document.getElementById('client-wave').classList.add('hidden');
+            document.getElementById('client-state').innerText = 'State: Disconnected';
+            setStatus('Disconnected', 'bg-gray-500');
+            
+            if(!forced) log('[CLIENT] Disconnected manually.', 'client');
+        }
+
+        async function startConnection() {
+            const inputPass = document.getElementById('wifiPassword').value;
+            closeWifiModal();
+            runConnectionSequence(inputPass);
+        }
+
+        async function runConnectionSequence(password, isReconnection = false) {
+            // UI Setup
+            document.getElementById('client-state').innerText = 'State: Authenticating...';
+            setStatus('Associating...', 'bg-yellow-500');
+
+            // Phase 1: Auth & Association
+            log('[CLIENT] Sending Authentication Request', 'client');
+            await createPacket(nodes.client, nodes.ap, 'mgmt');
+            
+            log('[AP] Authentication Successful', 'ap');
+            await createPacket(nodes.ap, nodes.client, 'mgmt');
+
+            log('[CLIENT] Sending Association Request', 'client');
+            await createPacket(nodes.client, nodes.ap, 'mgmt');
+
+            log('[AP] Association Response (Status: Successful)', 'ap');
+            await createPacket(nodes.ap, nodes.client, 'mgmt');
+
+            // Phase 2: 4-Way Handshake
+            log('--- STARTING 4-WAY HANDSHAKE ---', 'sys');
+            setStatus('Handshaking...', 'bg-blue-500');
+
+            // --- Message 1: AP -> Client (ANonce) ---
+            const anonce = Math.random().toString(16).substr(2, 8).toUpperCase();
+            log(`[AP] Sending EAPOL Msg 1 (ANonce: ${anonce})`, 'ap');
+            
+            // If attacking, visualize sniffing
+            if (state.isAttacking && isReconnection) sniffHandshake(1);
+            
+            await createPacket(nodes.ap, nodes.client, 'normal');
+
+            // --- Message 2: Client -> AP (SNonce + MIC) ---
+            const snonce = Math.random().toString(16).substr(2, 8).toUpperCase();
+            log(`[CLIENT] deriving PTK. Sending Msg 2 (SNonce: ${snonce}, MIC: Generated)`, 'client');
+            
+            // Check Password Validity (Simulated MIC Check)
+            if (password !== state.apPassword) {
+                await createPacket(nodes.client, nodes.ap, 'normal');
+                log('[AP] MIC Mismatch! PSK Incorrect.', 'ap');
+                log('[AP] Sending Deauth (Reason: 4-Way Handshake Failed).', 'ap');
+                await createPacket(nodes.ap, nodes.client, 'attack');
+                document.getElementById('client-state').innerText = 'State: Auth Failed';
+                setStatus('Auth Failed', 'bg-red-500');
+                
+                // If it was a manual attempt, show error on next open
+                if(!isReconnection) {
+                    // Slight hack to re-open modal with error
+                    setTimeout(() => {
+                        const modal = document.getElementById('wifiModal');
+                        const content = document.getElementById('wifiModalContent');
+                        modal.classList.remove('hidden');
+                        content.classList.remove('scale-95', 'opacity-0');
+                        content.classList.add('scale-100', 'opacity-100');
+                        
+                        document.getElementById('passwordError').classList.remove('hidden');
+                    }, 1000);
+                }
+                return;
+            }
+
+            if (state.isAttacking && isReconnection) sniffHandshake(2);
+            await createPacket(nodes.client, nodes.ap, 'normal');
+
+            // --- Message 3: AP -> Client (GTK + MIC) ---
+            log('[AP] Verified MIC. Installing PTK. Sending Msg 3 (GTK: Encrypted)', 'ap');
+            
+            if (state.isAttacking && isReconnection) sniffHandshake(3);
+            await createPacket(nodes.ap, nodes.client, 'normal');
+
+            // --- Message 4: Client -> AP (ACK) ---
+            log('[CLIENT] Verified Msg 3. Installing GTK. Sending Msg 4 (ACK)', 'client');
+            
+            if (state.isAttacking && isReconnection) sniffHandshake(4);
+            await createPacket(nodes.client, nodes.ap, 'normal');
+
+            // --- Connected State ---
+            log('[SYSTEM] PTK & GTK Installed. Port Open.', 'sys');
+            state.isConnected = true;
+            document.getElementById('client-state').innerText = 'State: Connected (AES-CCMP)';
+            setStatus('Connected', 'bg-green-500');
+            document.getElementById('client-wave').classList.remove('hidden');
+            
+            // If we just captured a handshake, start cracking
+            if (state.isAttacking && isReconnection) {
+                runOfflineCracking();
+            }
+        }
+
+        // --- Logic: Attacker Specific ---
+
+        async function sniffHandshake(msgNum) {
+            // Visual line from midpoint to attacker
+            log(`[ATTACKER] Sniffing EAPOL Frame ${msgNum}/4`, 'attacker');
+            
+            // Create a packet that splits from the air to the attacker
+            // We approximate this by spawning a packet from the "air" (center)
+            const stage = document.getElementById('stage');
+            const rect = stage.getBoundingClientRect();
+            
+            // Fake node in center
+            const centerNode = {
+                getBoundingClientRect: () => ({
+                    left: rect.left + rect.width/2,
+                    top: rect.top + rect.height/3,
+                    width: 0, height: 0
+                })
+            };
+
+            createPacket(centerNode, nodes.attacker, 'attack');
+        }
+
+        async function runOfflineCracking() {
+            await delay(1000);
+            log('-----------------------------------', 'attacker');
+            log('[ATTACKER] Handshake Captured! Starting Offline Dictionary Attack (aircrack-ng)...', 'attacker');
+            
+            const progressBar = "█";
+            
+            for (let word of state.dictionary) {
+                await delay(400); // Simulate processing time
+                log(`[ATTACKER] Testing: "${word}"... [MIC Mismatch]`, 'attacker');
+                
+                if (word === state.apPassword) {
+                    log(`[ATTACKER] Testing: "${word}"... [MIC MATCH]`, 'attacker');
+                    log(`[ATTACKER] KEY FOUND! Password is: "${word}"`, 'sys');
+                    
+                    // Visual flair
+                    const badge = document.getElementById('connectionStatus');
+                    badge.style.borderColor = 'red';
+                    
+                    // Add success message to log
+                    log('[SYSTEM] ⚠️ ATTACK SUCCESSFUL: WPA2 Key Compromised', 'sys');
+                    return;
+                }
+            }
+            
+            log('[ATTACKER] Dictionary exhausted. Key not found.', 'attacker');
+        }
+
+        // Initialize beacon loop
+        async function beaconLoop() {
+            while(true) {
+                if(!state.isAttacking || !state.isConnected) {
+                   // Just a subtle background visual, no logic
+                }
+                await delay(2000);
+            }
+        }
+        
+        beaconLoop();
+
+    </script>
+</body>
+</html>
