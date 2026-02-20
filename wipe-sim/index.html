@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KaliSim Wireless</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+            background-color: #0f0f0f;
+            user-select: none;
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Custom Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #0d0d0d;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #444;
+        }
+
+        /* Terminal Text Selection */
+        .terminal-content {
+            user-select: text;
+            cursor: text;
+        }
+
+        .terminal-window {
+            transition: box-shadow 0.15s ease-out, border-color 0.15s ease-out;
+        }
+        .terminal-window.maximized {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Animations */
+        @keyframes pulse-text {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-pulse-text {
+            animation: pulse-text 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen relative text-slate-200">
+
+    <!-- Background Wallpaper Layer -->
+    <div class="absolute inset-0 opacity-10 pointer-events-none flex items-center justify-center" 
+         style="background-image: radial-gradient(circle, #2a2a2a 1px, transparent 1px); background-size: 30px 30px;">
+        <i data-lucide="shield-alert" class="w-96 h-96 text-white"></i>
+    </div>
+
+    <!-- Top Panel -->
+    <div class="absolute top-0 left-0 right-0 h-8 bg-[#1a1a1a] border-b border-white/5 flex items-center justify-between px-3 z-[1000] text-xs shadow-md select-none">
+        <div class="flex items-center gap-4 text-white/80">
+            <div class="flex items-center gap-1.5 font-bold text-blue-400">
+                <i data-lucide="shield-alert" class="w-3.5 h-3.5"></i>
+                <span>KALISIM</span>
+            </div>
+            <div class="flex items-center gap-4 text-white/60 font-medium">
+                <span class="hover:text-white cursor-pointer transition-colors">Applications</span>
+                <span class="hover:text-white cursor-pointer transition-colors">Places</span>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2">
+                <i data-lucide="activity" class="w-3.5 h-3.5 text-green-500"></i>
+                <span class="text-[10px] text-white/40 uppercase font-mono tracking-tighter">CPU: 4%</span>
+            </div>
+            <div class="flex items-center gap-3 border-l border-white/10 pl-3">
+                <!-- WiFi Indicator Wrapper -->
+                <div class="relative">
+                    <div id="wifi-indicator" class="cursor-pointer p-1 hover:bg-white/5 rounded transition-colors" onclick="app.toggleWifiDropdown(event)">
+                        <i data-lucide="wifi" class="w-3.5 h-3.5 text-blue-400"></i>
+                    </div>
+                    <!-- WiFi Dropdown Menu -->
+                    <div id="wifi-menu" class="hidden absolute top-8 right-0 w-64 bg-[#2d2d2d] border border-white/10 rounded shadow-xl z-[3000] text-xs flex flex-col pointer-events-auto">
+                        <div class="px-3 py-2 border-b border-white/5 font-bold text-white/90">Network Connections</div>
+                        <div id="wifi-menu-content">
+                            <!-- Dynamic Content -->
+                        </div>
+                        <div class="px-3 py-2 border-t border-white/5 text-white/50 hover:bg-white/5 cursor-pointer flex items-center gap-2">
+                            <i data-lucide="settings" class="w-3 h-3"></i> Network Settings
+                        </div>
+                    </div>
+                </div>
+
+                <div id="net-indicator">
+                    <i data-lucide="globe" class="w-3.5 h-3.5 text-blue-400"></i>
+                </div>
+                <span class="text-white/80 font-mono tracking-tighter" id="clock">12:00</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Desktop Icons -->
+    <div class="absolute top-12 left-6 flex flex-col gap-8 z-0">
+        <div class="flex flex-col items-center gap-1 group cursor-pointer" onclick="app.createTerminal()">
+            <div class="p-3 bg-slate-800/80 rounded-lg group-hover:bg-slate-700 transition-colors shadow-lg border border-white/5">
+                <i data-lucide="terminal" class="w-8 h-8 text-blue-400"></i>
+            </div>
+            <span class="text-[10px] drop-shadow-md font-mono text-white text-center bg-black/20 px-1 rounded">Terminal</span>
+        </div>
+        <div class="flex flex-col items-center gap-1 group cursor-pointer">
+            <div class="p-3 bg-slate-800/80 rounded-lg group-hover:bg-slate-700 transition-colors shadow-lg border border-white/5">
+                <i data-lucide="folder" class="w-8 h-8 text-yellow-500"></i>
+            </div>
+            <span class="text-[10px] drop-shadow-md font-mono text-white text-center bg-black/20 px-1 rounded">Home</span>
+        </div>
+    </div>
+
+    <!-- Windows Container -->
+    <div id="windows-container" class="absolute inset-0 pointer-events-none z-10 overflow-hidden">
+        <!-- Terminals are injected here -->
+    </div>
+
+    <!-- Bottom Taskbar -->
+    <div class="absolute bottom-0 left-0 right-0 h-10 bg-[#1f1f1f]/95 backdrop-blur-md flex items-center px-2 gap-2 z-[2000] border-t border-white/10 select-none">
+        <button onclick="app.createTerminal()" class="p-1.5 rounded hover:bg-white/10 text-blue-400 transition-all mr-2 group relative" title="New Terminal">
+            <i data-lucide="terminal" class="w-5 h-5"></i>
+            <div class="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
+        </button>
+        <div class="w-[1px] h-6 bg-white/10 mx-1"></div>
+        <div id="taskbar-list" class="flex items-center gap-1 flex-1 overflow-x-auto no-scrollbar">
+            <!-- Taskbar items injected here -->
+        </div>
+    </div>
+
+    <!-- Custom Context Menu -->
+    <div id="context-menu" class="hidden fixed bg-[#2d2d2d] border border-white/10 rounded shadow-xl z-[9999] py-1 min-w-[160px]">
+        <div class="px-3 py-1.5 text-[10px] text-white/40 uppercase font-bold tracking-wider">Terminal Actions</div>
+        <button id="ctx-copy-btn" class="flex items-center gap-2 px-3 py-2 hover:bg-blue-600 w-full text-left text-xs font-medium text-white transition-colors group">
+            <i data-lucide="copy" class="w-3.5 h-3.5 group-hover:text-white text-blue-400"></i>
+            Copy Selection
+        </button>
+    </div>
+
+    <script>
+        // --- Constants & Data ---
+        const INITIAL_NETWORKS = [
+            { essid: "CoffeeShop", bssid: "18:AF:61:88:91:AB", channel: 6, encryption: "WPA2", signal: -45, clients: ["AA:BB:CC:DD:EE:FF", "32:A1:CC:44:90:11"], password: "coffee123", crackable: true, handshakeCaptured: false },
+            { essid: "Home_WiFi", bssid: "BC:D1:1F:A2:33:40", channel: 1, encryption: "WPA2", signal: -60, clients: ["CC:DD:EE:FF:00:11"], password: "mypassword", crackable: true, handshakeCaptured: false },
+            { essid: "Airport_Lounge", bssid: "00:14:22:01:23:45", channel: 11, encryption: "WPA2", signal: -72, clients: ["11:22:33:44:55:66"], password: "admin123", crackable: true, handshakeCaptured: false },
+            { essid: "Corporate_Secure", bssid: "A4:B3:C2:D1:E0:F9", channel: 3, encryption: "WPA2", signal: -55, clients: ["99:88:77:66:55:44", "AA:11:22:33:44:55"], password: "secure2024", crackable: true, handshakeCaptured: false },
+            { essid: "Starbucks", bssid: "24:A2:E1:99:10:CC", channel: 6, encryption: "WPA2", signal: -50, clients: ["DE:AD:BE:EF:00:01", "CA:FE:BA:BE:00:00"], password: "venti_latte", crackable: true, handshakeCaptured: false },
+            { essid: "Tesla_Guest", bssid: "60:77:21:44:A2:BB", channel: 9, encryption: "WPA2", signal: -68, clients: ["A1:B2:C3:D4:E5:F6"], password: "elon_musk", crackable: true, handshakeCaptured: false },
+            { essid: "Legacy_Net", bssid: "00:11:22:33:44:55", channel: 11, encryption: "WEP", signal: -80, clients: ["12:34:56:78:90:AB"], password: "12345", crackable: true, handshakeCaptured: false },
+            { essid: "Neighborhood_WiFi", bssid: "AA:BB:CC:DD:EE:F1", channel: 2, encryption: "WPA", signal: -65, clients: ["B1:B2:B3:B4:B5:B6"], password: "neighbor123", crackable: true, handshakeCaptured: false },
+            { essid: "Hidden_SSID", bssid: "44:55:66:77:88:99", channel: 4, encryption: "WPA2", signal: -75, clients: ["BB:CC:DD:EE:FF:00", "C1:C2:C3:C4:C5:C6"], password: "hiddenpassword", crackable: true, handshakeCaptured: false },
+            { essid: "Office_Guest", bssid: "D1:E2:F3:A4:B5:C6", channel: 8, encryption: "WPA", signal: -58, clients: ["FF:EE:DD:CC:BB:AA"], password: "guestpass", crackable: true, handshakeCaptured: false },
+        ];
+
+        // Expanded wordlist to include all mock passwords
+        const WORDLIST = [
+            "admin123", "coffee123", "password", "letmein", "12345678", "dragon", "qwerty", "mypassword",
+            "secure2024", "venti_latte", "elon_musk", "12345", "neighbor123", "hiddenpassword", "guestpass"
+        ];
+
+        // --- Application State ---
+        const appState = {
+            interfaceMode: "managed",
+            interfaceName: "wlan0",
+            wifiIconVisible: true,
+            internetAvailable: true,
+            networks: JSON.parse(JSON.stringify(INITIAL_NETWORKS)),
+            activeCapture: null, // { bssid, channel, essid }
+            captureFileName: null,
+            files: ["wordlist.txt"],
+            handshakeCaptured: false,
+            windows: [], // Array of window objects
+            nextWindowId: 1,
+            activeWindowId: null,
+            dragState: { isDragging: false, winId: null, startX: 0, startY: 0 },
+            contextMenuText: ""
+        };
+
+        // --- Main Application Logic ---
+        const app = {
+            init: () => {
+                app.startClock();
+                app.createTerminal(); // Open initial terminal
+                
+                // Global Events
+                document.addEventListener('mousemove', app.handleMouseMove);
+                document.addEventListener('mouseup', app.handleMouseUp);
+                document.addEventListener('click', (e) => {
+                    app.hideContextMenu();
+                    // Close WiFi menu if clicked outside
+                    const wifiMenu = document.getElementById('wifi-menu');
+                    const wifiIndicator = document.getElementById('wifi-indicator');
+                    if (wifiMenu && !wifiMenu.contains(e.target) && wifiIndicator && !wifiIndicator.contains(e.target)) {
+                        wifiMenu.classList.add('hidden');
+                    }
+                });
+                document.addEventListener('keydown', app.handleGlobalKeydown);
+                
+                // Context Menu
+                const ctxBtn = document.getElementById('ctx-copy-btn');
+                if(ctxBtn) {
+                    ctxBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        app.copyToClipboard(appState.contextMenuText);
+                    });
+                    ctxBtn.addEventListener('mousedown', (e) => e.stopPropagation()); // Prevent drag start/focus loss
+                }
+            },
+
+            startClock: () => {
+                const clock = document.getElementById('clock');
+                setInterval(() => {
+                    const now = new Date();
+                    clock.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                }, 1000);
+            },
+
+            // --- WiFi Menu ---
+            toggleWifiDropdown: (e) => {
+                e.stopPropagation();
+                const menu = document.getElementById('wifi-menu');
+                const content = document.getElementById('wifi-menu-content');
+                
+                // Generate content based on state
+                let html = '';
+                
+                // Wired Connection (Always present in simulation context for realism)
+                html += `
+                    <div class="px-3 py-2 hover:bg-white/5 cursor-pointer border-b border-white/5">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-white">Wired Connection 1</span>
+                            <span class="text-[10px] text-green-400 bg-green-400/10 px-1.5 rounded">Connected</span>
+                        </div>
+                        <div class="text-white/40 mt-0.5">1000 Mb/s</div>
+                    </div>
+                `;
+
+                // Wireless Section
+                if (!appState.wifiIconVisible && !appState.interfaceMode.includes('monitor')) {
+                    // Killed state
+                    html += `
+                        <div class="px-3 py-2 hover:bg-white/5 cursor-pointer">
+                            <div class="flex items-center gap-2 text-red-400">
+                                <i data-lucide="wifi-off" class="w-4 h-4"></i>
+                                <span class="font-bold">Wi-Fi Disabled</span>
+                            </div>
+                            <div class="text-white/40 mt-0.5">Hardware disabled or services stopped</div>
+                        </div>
+                    `;
+                } else if (appState.interfaceMode === 'monitor') {
+                    // Monitor Mode
+                    html += `
+                        <div class="px-3 py-2 hover:bg-white/5 cursor-pointer">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2 text-yellow-500">
+                                    <i data-lucide="eye" class="w-4 h-4"></i>
+                                    <span class="font-bold">Monitor Mode</span>
+                                </div>
+                                <span class="text-[10px] text-yellow-500 bg-yellow-500/10 px-1.5 rounded">Active</span>
+                            </div>
+                            <div class="text-white/40 mt-0.5">Interface: ${appState.interfaceName}</div>
+                            <div class="text-white/40">Network management disabled</div>
+                        </div>
+                    `;
+                } else {
+                    // Managed Mode
+                    html += `
+                        <div class="px-3 py-2 hover:bg-white/5 cursor-pointer">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2 text-blue-400">
+                                    <i data-lucide="wifi" class="w-4 h-4"></i>
+                                    <span class="font-bold">CoffeeShop</span>
+                                </div>
+                                <span class="text-[10px] text-green-400 bg-green-400/10 px-1.5 rounded">Connected</span>
+                            </div>
+                            <div class="text-white/40 mt-0.5">Interface: ${appState.interfaceName}</div>
+                            <div class="text-white/40">Signal: 98%</div>
+                        </div>
+                        <div class="px-3 py-2 text-white/30 italic text-[10px]">
+                            Available Networks:
+                        </div>
+                        <div class="px-3 py-1.5 hover:bg-white/5 cursor-pointer flex justify-between text-white/60">
+                            <span>Home_WiFi</span> <i data-lucide="lock" class="w-3 h-3"></i>
+                        </div>
+                        <div class="px-3 py-1.5 hover:bg-white/5 cursor-pointer flex justify-between text-white/60">
+                            <span>Starbucks</span> <i data-lucide="lock" class="w-3 h-3"></i>
+                        </div>
+                    `;
+                }
+
+                content.innerHTML = html;
+                lucide.createIcons();
+                
+                menu.classList.toggle('hidden');
+            },
+
+            // --- Window Management ---
+            createTerminal: () => {
+                const id = appState.nextWindowId++;
+                const x = 100 + (appState.windows.length * 30);
+                const y = 100 + (appState.windows.length * 30);
+                
+                // Realistic Boot Message
+                const bootHistory = [
+                    { type: 'info', text: 'Kali GNU/Linux Rolling kali tty1' },
+                    { type: 'info', text: '' },
+                    { type: 'info', text: 'KaliSim v1.3.6 - Educational Wireless Simulation' },
+                    { type: 'info', text: 'Type "help" for a list of commands.' },
+                    { type: 'info', text: ' Shortcuts: Ctrl+C (Interrupt) | Shift+Ctrl+C (Copy)' },
+                    { type: 'br' }
+                ];
+
+                const win = {
+                    id,
+                    x,
+                    y,
+                    width: 700,
+                    height: 450,
+                    zIndex: app.getMaxZIndex() + 1,
+                    minimized: false,
+                    maximized: false,
+                    prevBounds: null,
+                    history: bootHistory,
+                    input: "",
+                    loop: null, // 'airodump' | 'aireplay' | 'crack'
+                    loopInterval: null,
+                    loopData: {}, 
+                };
+
+                appState.windows.push(win);
+                app.renderWindow(win);
+                app.focusWindow(id);
+                app.renderTaskbar();
+            },
+
+            closeWindow: (id) => {
+                const winIndex = appState.windows.findIndex(w => w.id === id);
+                if (winIndex > -1) {
+                    app.stopLoop(appState.windows[winIndex]); // Stop any running processes
+                    document.getElementById(`win-${id}`).remove();
+                    appState.windows.splice(winIndex, 1);
+                    app.renderTaskbar();
+                }
+            },
+
+            focusWindow: (id) => {
+                appState.activeWindowId = id;
+                const win = appState.windows.find(w => w.id === id);
+                if (win) {
+                    win.zIndex = app.getMaxZIndex() + 1;
+                    const el = document.getElementById(`win-${id}`);
+                    if (el) {
+                        el.style.zIndex = win.zIndex;
+                        el.classList.remove('opacity-90', 'border-white/10');
+                        el.classList.add('border-blue-500/50', 'shadow-blue-500/10');
+                        // Blur others
+                        appState.windows.forEach(w => {
+                            if (w.id !== id) {
+                                const otherEl = document.getElementById(`win-${w.id}`);
+                                if (otherEl) {
+                                    otherEl.classList.add('opacity-90', 'border-white/10');
+                                    otherEl.classList.remove('border-blue-500/50', 'shadow-blue-500/10');
+                                }
+                            }
+                        });
+                        // Focus input
+                        const inputEl = document.getElementById(`input-${id}`);
+                        if (inputEl) inputEl.focus();
+                    }
+                }
+                app.renderTaskbar();
+            },
+
+            minimizeWindow: (id) => {
+                const win = appState.windows.find(w => w.id === id);
+                if (win) {
+                    win.minimized = !win.minimized;
+                    const el = document.getElementById(`win-${id}`);
+                    if (el) el.style.display = win.minimized ? 'none' : 'flex';
+                    if (!win.minimized) app.focusWindow(id);
+                    app.renderTaskbar();
+                }
+            },
+
+            maximizeWindow: (id) => {
+                const win = appState.windows.find(w => w.id === id);
+                if (win) {
+                    const el = document.getElementById(`win-${id}`);
+                    if (win.maximized) {
+                        // Restore
+                        win.maximized = false;
+                        win.x = win.prevBounds.x;
+                        win.y = win.prevBounds.y;
+                        win.width = win.prevBounds.width;
+                        win.height = win.prevBounds.height;
+                        el.classList.remove('rounded-none');
+                        el.classList.add('rounded-md');
+                    } else {
+                        // Maximize
+                        win.prevBounds = { x: win.x, y: win.y, width: win.width, height: win.height };
+                        win.maximized = true;
+                        win.x = 0;
+                        win.y = 32; // Top bar height
+                        win.width = window.innerWidth;
+                        win.height = window.innerHeight - 32 - 40; // Minus top and taskbar
+                        el.classList.remove('rounded-md');
+                        el.classList.add('rounded-none');
+                    }
+                    el.style.left = `${win.x}px`;
+                    el.style.top = `${win.y}px`;
+                    el.style.width = `${win.width}px`;
+                    el.style.height = `${win.height}px`;
+                }
+            },
+
+            getMaxZIndex: () => {
+                return appState.windows.length > 0 ? Math.max(...appState.windows.map(w => w.zIndex)) : 10;
+            },
+
+            // --- UI Rendering ---
+            renderWindow: (win) => {
+                const div = document.createElement('div');
+                div.id = `win-${win.id}`;
+                div.className = `absolute flex flex-col bg-[#1c1c1c] border rounded-md shadow-2xl overflow-hidden pointer-events-auto terminal-window outline-none`;
+                div.style.left = `${win.x}px`;
+                div.style.top = `${win.y}px`;
+                div.style.width = `${win.width}px`;
+                div.style.height = `${win.height}px`;
+                div.style.zIndex = win.zIndex;
+                div.tabIndex = 0;
+
+                div.innerHTML = `
+                    <!-- Header -->
+                    <div class="h-9 bg-[#2d2d2d] flex items-center justify-between px-3 cursor-move select-none shadow-sm drag-handle" onmousedown="app.handleDragStart(event, ${win.id})" ondblclick="app.maximizeWindow(${win.id})">
+                        <div class="flex items-center gap-2 pointer-events-none text-white/70">
+                            <i data-lucide="terminal" class="w-3.5 h-3.5 text-blue-400"></i>
+                            <span class="text-[11px] font-bold tracking-tight uppercase font-mono">kali@linux: ~</span>
+                        </div>
+                        <div class="flex items-center gap-1.5" onmousedown="event.stopPropagation()">
+                            <div class="p-1 hover:bg-white/10 rounded cursor-pointer transition-colors" onclick="app.minimizeWindow(${win.id})">
+                                <i data-lucide="minus" class="w-3 h-3 text-white/40"></i>
+                            </div>
+                            <div class="p-1 hover:bg-white/10 rounded cursor-pointer transition-colors" onclick="app.maximizeWindow(${win.id})">
+                                <i data-lucide="maximize-2" class="w-3 h-3 text-white/40"></i>
+                            </div>
+                            <div class="p-1 hover:bg-red-500/90 rounded cursor-pointer transition-colors" onclick="app.closeWindow(${win.id})">
+                                <i data-lucide="x" class="w-3.5 h-3.5 text-white/80"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Content -->
+                    <div id="term-content-${win.id}" class="flex-1 p-3 overflow-y-auto font-mono text-sm leading-relaxed custom-scrollbar bg-[#0d0d0d] terminal-content text-slate-300 select-text outline-none" oncontextmenu="app.handleContextMenu(event)" onclick="app.handleContentClick(${win.id})">
+                        <!-- History injected here -->
+                        <div id="term-history-${win.id}"></div>
+                        <!-- Input Line -->
+                        <div id="input-line-${win.id}" class="flex flex-col mt-1">
+                            <div class="text-blue-400 font-bold select-none">┌──(kali㉿kali)-[~]</div>
+                            <div class="flex items-center gap-2">
+                                <div class="text-blue-400 font-bold select-none">└─$</div>
+                                <input id="input-${win.id}" type="text" class="bg-transparent border-none outline-none text-white flex-1 caret-blue-400 font-mono" onkeydown="app.handleInputKey(event, ${win.id})" autocomplete="off" spellcheck="false">
+                            </div>
+                        </div>
+                        <div id="loop-msg-${win.id}" class="hidden text-xs text-white/30 animate-pulse-text mt-4 font-mono select-none">[Ctrl+C to stop | Shift+Ctrl+C to copy]</div>
+                    </div>
+                `;
+
+                // Events
+                div.addEventListener('mousedown', () => app.focusWindow(win.id));
+                document.getElementById('windows-container').appendChild(div);
+                app.updateTerminalHistory(win);
+                lucide.createIcons();
+            },
+
+            updateTerminalHistory: (win) => {
+                const historyContainer = document.getElementById(`term-history-${win.id}`);
+                const inputLine = document.getElementById(`input-line-${win.id}`);
+                const loopMsg = document.getElementById(`loop-msg-${win.id}`);
+                const contentDiv = document.getElementById(`term-content-${win.id}`);
+
+                // Rebuild history HTML
+                historyContainer.innerHTML = win.history.map(line => {
+                    if (line.type === 'br') return '<div class="h-2"></div>';
+                    if (line.type === 'prompt') return `<div class="text-blue-400 font-bold select-none">${line.text}</div>`;
+                    if (line.type === 'command') return `<div class="text-white mb-2 select-text">${line.text}</div>`;
+                    if (line.type === 'table') return `<pre class="text-green-400 whitespace-pre font-mono leading-[1.2] select-text">${line.text}</pre>`;
+                    if (line.type === 'info') return `<div class="text-white/40 italic text-xs select-none">${line.text}</div>`;
+                    return `<div class="text-slate-300 whitespace-pre-wrap select-text">${line.text}</div>`;
+                }).join('');
+
+                // Toggle Input vs Loop Message
+                if (win.loop) {
+                    inputLine.style.display = 'none';
+                    loopMsg.style.display = 'block';
+                } else {
+                    inputLine.style.display = 'flex';
+                    loopMsg.style.display = 'none';
+                    // Auto scroll
+                    requestAnimationFrame(() => {
+                        contentDiv.scrollTop = contentDiv.scrollHeight;
+                    });
+                }
+            },
+
+            renderTaskbar: () => {
+                const list = document.getElementById('taskbar-list');
+                list.innerHTML = '';
+                appState.windows.forEach(win => {
+                    const btn = document.createElement('button');
+                    const isActive = appState.activeWindowId === win.id && !win.minimized;
+                    btn.className = `flex items-center gap-2 px-3 py-1 rounded text-xs font-medium transition-all min-w-[120px] max-w-[200px] border-b-2 ${isActive ? 'bg-white/10 text-white border-blue-500 shadow-[inset_0_-2px_10px_rgba(59,130,246,0.2)]' : 'bg-transparent text-white/60 border-transparent hover:bg-white/5 hover:text-white/90'}`;
+                    btn.innerHTML = `<i data-lucide="terminal" class="w-3.5 h-3.5 ${isActive ? 'text-blue-400' : 'text-white/40'}"></i> <span class="truncate">kali@linux: ~</span>`;
+                    btn.onclick = () => {
+                        if (isActive) app.minimizeWindow(win.id);
+                        else {
+                            if (win.minimized) app.minimizeWindow(win.id); // Restore
+                            app.focusWindow(win.id);
+                        }
+                    };
+                    list.appendChild(btn);
+                });
+                lucide.createIcons();
+            },
+
+            updateStatusIcons: () => {
+                const wifiDiv = document.getElementById('wifi-indicator');
+                const netDiv = document.getElementById('net-indicator');
+                const wifiIcon = wifiDiv.querySelector('i');
+                const netIcon = netDiv.querySelector('i');
+                
+                // Re-render Wifi Icon
+                if (appState.wifiIconVisible) {
+                    const colorClass = appState.internetAvailable ? 'text-blue-400' : 'text-yellow-500';
+                    wifiDiv.innerHTML = `<i data-lucide="wifi" class="w-3.5 h-3.5 ${colorClass}"></i>`;
+                } else {
+                    wifiDiv.innerHTML = `<i data-lucide="wifi-off" class="w-3.5 h-3.5 text-red-500"></i>`;
+                }
+
+                // Re-render Net Icon
+                if (appState.internetAvailable) {
+                    netDiv.innerHTML = `<i data-lucide="globe" class="w-3.5 h-3.5 text-blue-400"></i>`;
+                } else {
+                    netDiv.innerHTML = `<i data-lucide="globe" class="w-3.5 h-3.5 text-white/20"></i>`;
+                }
+                
+                // Reprocess icons
+                lucide.createIcons();
+            },
+
+            // --- Terminal Logic ---
+            handleInputKey: (e, id) => {
+                const win = appState.windows.find(w => w.id === id);
+                if (e.key === 'Enter') {
+                    const cmd = e.target.value;
+                    win.history.push({ type: 'prompt', text: '┌──(kali㉿kali)-[~]' });
+                    win.history.push({ type: 'command', text: `└─$ ${cmd}` });
+                    app.processCommand(win, cmd);
+                    e.target.value = '';
+                    app.updateTerminalHistory(win);
+                }
+            },
+
+            handleContentClick: (id) => {
+                // Focus the input, but allow text selection to remain valid
+                const sel = window.getSelection();
+                if (sel.toString().length === 0) {
+                    document.getElementById(`input-${id}`).focus();
+                }
+            },
+
+            handleGlobalKeydown: (e) => {
+                // Copy: Shift+Ctrl+C
+                if (e.shiftKey && e.ctrlKey && e.key.toLowerCase() === 'c') {
+                    e.preventDefault();
+                    const selection = document.getSelection().toString();
+                    if (selection) app.copyToClipboard(selection);
+                    return;
+                }
+
+                // Interrupt: Ctrl+C
+                if (e.ctrlKey && !e.shiftKey && e.key.toLowerCase() === 'c') {
+                    e.preventDefault();
+                    if (appState.activeWindowId) {
+                        const win = appState.windows.find(w => w.id === appState.activeWindowId);
+                        if (win && win.loop) {
+                            app.stopLoop(win);
+                        } else if (win) {
+                            // Just print ^C if idle
+                            win.history.push({ type: 'command', text: '^C' });
+                            app.updateTerminalHistory(win);
+                        }
+                    }
+                }
+            },
+
+            processCommand: (win, cmdRaw) => {
+                const cmd = cmdRaw.trim();
+                const parts = cmd.split(/\s+/);
+                const base = parts[0] === 'sudo' ? parts[1] : parts[0];
+                const args = parts[0] === 'sudo' ? parts.slice(2) : parts.slice(1);
+
+                if (!base) return;
+
+                switch(base) {
+                    case 'help':
+                        win.history.push({ type: 'output', text: `Available commands:
+  iwconfig                    Configure wireless interfaces
+  airmon-ng start <iface>      Enable monitor mode
+  airmon-ng stop <iface>       Stop monitor mode
+  airmon-ng check kill         Kill interfering processes
+  airodump-ng <iface>          Scan for networks
+  airodump-ng -w <file> -c <ch> --bssid <id> <iface>  Capture handshake
+  aireplay-ng --deauth <n> -a <bssid> <iface>   Deauth attack
+  aircrack-ng <file> -w <list> Crack capture file
+  systemctl restart NetworkManager Restore wireless services
+  ls                           List files
+  clear                        Clear screen`});
+                        break;
+                    
+                    case 'clear':
+                        win.history = [];
+                        break;
+
+                    case 'ls':
+                        win.history.push({ type: 'output', text: appState.files.join('  ') });
+                        break;
+
+                    case 'iwconfig':
+                        if (appState.interfaceMode === 'managed') {
+                            if (appState.wifiIconVisible) {
+                                win.history.push({ type: 'output', text: `${appState.interfaceName}   IEEE 802.11  ESSID:"CoffeeShop"  \n          Mode:Managed  Frequency:2.437 GHz  Access Point: 18:AF:61:88:91:AB   \n          Bit Rate=150 Mb/s   Tx-Power=20 dBm` });
+                            } else {
+                                win.history.push({ type: 'output', text: `${appState.interfaceName}   IEEE 802.11  ESSID:off/any  \n          Mode:Managed  Access Point: Not-Associated` });
+                            }
+                        } else {
+                            win.history.push({ type: 'output', text: `${appState.interfaceName}   IEEE 802.11  Mode:Monitor  Frequency:2.412 GHz` });
+                        }
+                        win.history.push({ type: 'output', text: '\nlo        no wireless extensions.\neth0      no wireless extensions.' });
+                        break;
+
+                    case 'airmon-ng':
+                        if (args[0] === 'check' && args[1] === 'kill') {
+                            win.history.push({ type: 'output', text: 'Killing interfering processes...\nPID  Name\n842  NetworkManager\n901  wpa_supplicant' });
+                            appState.wifiIconVisible = false;
+                            appState.internetAvailable = false;
+                            app.updateStatusIcons();
+                        } else if (args[0] === 'start') {
+                            win.history.push({ type: 'output', text: 'Enabling monitor mode on wlan0...\nMonitor mode enabled on wlan0mon' });
+                            appState.interfaceMode = 'monitor';
+                            appState.interfaceName = 'wlan0mon';
+                            appState.wifiIconVisible = false;
+                            appState.internetAvailable = false;
+                            app.updateStatusIcons();
+                        } else if (args[0] === 'stop') {
+                            win.history.push({ type: 'output', text: 'Monitor mode disabled. Interface renamed to wlan0' });
+                            appState.interfaceMode = 'managed';
+                            appState.interfaceName = 'wlan0';
+                        } else {
+                            win.history.push({ type: 'output', text: 'Usage: airmon-ng <start|stop|check kill> <interface>' });
+                        }
+                        break;
+
+                    case 'systemctl':
+                        if (args[0] === 'restart' && args[1] === 'NetworkManager') {
+                            win.history.push({ type: 'output', text: 'Restarting NetworkManager service...' });
+                            setTimeout(() => {
+                                win.history.push({ type: 'output', text: 'Service restarted successfully.' });
+                                appState.wifiIconVisible = true;
+                                appState.internetAvailable = true;
+                                app.updateStatusIcons();
+                                app.updateTerminalHistory(win);
+                            }, 800);
+                        }
+                        break;
+
+                    case 'airodump-ng':
+                        {
+                            const targetIface = parts[parts.length - 1];
+                            
+                            if (targetIface === 'wlan0') {
+                                win.history.push({ type: 'output', text: "interface wlan0: Operation not supported in managed mode" });
+                                break;
+                            }
+                            
+                            if (targetIface !== 'wlan0mon') {
+                                if (!targetIface || targetIface.startsWith('-')) {
+                                    win.history.push({ type: 'output', text: "Usage: airodump-ng <options> <interface>" });
+                                } else {
+                                    win.history.push({ type: 'output', text: `Interface ${targetIface} not found.` });
+                                }
+                                break;
+                            }
+
+                            if (appState.interfaceMode !== 'monitor') {
+                                win.history.push({ type: 'output', text: 'Error: Interface not in monitor mode.' });
+                            } else {
+                                // Check for targeted args
+                                if (cmd.includes('--bssid')) {
+                                    const bIdx = parts.indexOf('--bssid');
+                                    const wIdx = parts.indexOf('-w');
+                                    const bssid = bIdx !== -1 ? parts[bIdx + 1] : null;
+                                    const file = wIdx !== -1 ? parts[wIdx + 1] : "capture";
+                                    const target = appState.networks.find(n => n.bssid === bssid);
+                                    if (target) {
+                                        win.history.push({ type: 'output', text: `Capturing on channel ${target.channel} for BSSID ${bssid}...` });
+                                        
+                                        // NEW: Set local window state for independent rendering
+                                        win.loopData = {
+                                            mode: 'targeted',
+                                            target: { bssid, channel: target.channel, essid: target.essid }
+                                        };
+
+                                        // Set global state so aireplay-ng knows what's happening
+                                        appState.activeCapture = { bssid, channel: target.channel, essid: target.essid };
+                                        appState.captureFileName = file;
+                                        
+                                        win.loop = 'airodump';
+                                        app.startAirodumpLoop(win);
+                                    } else {
+                                        win.history.push({ type: 'output', text: `Error: BSSID ${bssid} not found.` });
+                                    }
+                                } else {
+                                    // General Scan
+                                    win.loopData = { mode: 'general' };
+                                    // We don't clear global activeCapture immediately to prevent disrupting other windows,
+                                    // but typically a general scan implies channel hopping which breaks lock.
+                                    // For visual sync, we just set local mode.
+                                    
+                                    win.loop = 'airodump';
+                                    app.startAirodumpLoop(win);
+                                }
+                            }
+                        }
+                        break;
+
+                    case 'aireplay-ng':
+                        {
+                            const replayIface = parts[parts.length - 1];
+
+                            if (replayIface === 'wlan0') {
+                                win.history.push({ type: 'output', text: "interface wlan0: Operation not supported in managed mode" });
+                                break;
+                            }
+
+                            if (replayIface !== 'wlan0mon') {
+                                win.history.push({ type: 'output', text: `Interface ${replayIface} not found.` });
+                                break;
+                            }
+
+                            if (appState.interfaceMode !== 'monitor') {
+                                win.history.push({ type: 'output', text: 'Error: Interface not in monitor mode.' });
+                            } else {
+                                // Syntax: aireplay-ng --deauth <n> -a <bssid> <iface>
+                                const dIdx = parts.findIndex(p => p === '--deauth' || p === '-0');
+                                const aIdx = parts.indexOf('-a');
+                                
+                                if (dIdx !== -1 && aIdx !== -1) {
+                                    const count = parseInt(parts[dIdx+1]);
+                                    const bssid = parts[aIdx+1];
+                                    win.history.push({ type: 'output', text: `Waiting for beacon frame (BSSID: ${bssid}) on channel 6` });
+                                    
+                                    win.loopData = { count, current: 0, bssid, infinite: count === 0 };
+                                    win.loop = 'aireplay';
+                                    app.startAireplayLoop(win);
+                                } else {
+                                    win.history.push({ type: 'output', text: 'Usage: aireplay-ng --deauth <n> -a <bssid> <iface>' });
+                                }
+                            }
+                        }
+                        break;
+
+                    case 'aircrack-ng':
+                        const file = parts[1];
+                        if (!appState.files.includes(file)) {
+                            win.history.push({ type: 'output', text: `Error: File ${file} not found.` });
+                        } else if (!appState.handshakeCaptured) {
+                            win.history.push({ type: 'output', text: 'Error: No handshake found in file.' });
+                        } else {
+                            win.history.push({ type: 'output', text: 'Opening capture file...\nCracking... Please wait.' });
+                            win.loop = 'crack';
+                            app.startCrackLoop(win);
+                        }
+                        break;
+
+                    default:
+                        win.history.push({ type: 'output', text: `bash: ${base}: command not found` });
+                }
+            },
+
+            // --- Simulation Loops ---
+            startAirodumpLoop: (win) => {
+                win.loopInterval = setInterval(() => {
+                    // Update the last history entry if it's a table, or create new
+                    const filtered = win.history.filter(h => h.type !== 'table');
+                    
+                    const header = "BSSID              PWR  CH  ENC   ESSID";
+                    const sep = "--------------------------------------------------";
+                    let rows = [];
+                    let footer = [];
+
+                    // Check LOCAL window mode instead of global state
+                    if (win.loopData && win.loopData.mode === 'targeted') {
+                        // TARGETED MODE (Local view)
+                        const targetInfo = win.loopData.target;
+                        const t = appState.networks.find(n => n.bssid === targetInfo.bssid);
+                        
+                        if (t) {
+                            rows.push(`${t.bssid.padEnd(18)} ${t.signal.toString().padEnd(4)} ${t.channel.toString().padEnd(3)} ${t.encryption.padEnd(5)} ${t.essid}`);
+                            
+                            // Check global state for handshake status (set by aireplay)
+                            const note = appState.handshakeCaptured && appState.activeCapture?.bssid === t.bssid ? '' : 'Probing';
+                            const handshakeMsg = appState.handshakeCaptured && appState.activeCapture?.bssid === t.bssid ? 'WPA handshake: ' + t.bssid : 'Capturing packets...';
+
+                            footer = [
+                                "",
+                                `CH ${t.channel} ][ Elapsed: 30s ][ ${handshakeMsg}` ,
+                                "",
+                                "BSSID              STATION            PWR   Rate    Lost    Frames  Notes",
+                                ...(t.clients.length > 0 ? t.clients.map(c => `${t.bssid.padEnd(18)} ${c.padEnd(18)} -42   0 - 1      0      ${Math.floor(Math.random() * 50)}    ${note}`) : ["(No clients detected)"])
+                            ];
+                        }
+                    } else {
+                        // GENERAL SCAN MODE (Local view)
+                        rows = appState.networks.map(n => 
+                            `${n.bssid.padEnd(18)} ${n.signal.toString().padEnd(4)} ${n.channel.toString().padEnd(3)} ${n.encryption.padEnd(5)} ${n.essid}`
+                        );
+                    }
+
+                    const tableText = [header, sep, ...rows, ...footer].join('\n');
+                    
+                    // Replace or add table
+                    win.history = [...filtered, { type: 'table', text: tableText }];
+                    app.updateTerminalHistory(win);
+                }, 1000);
+            },
+
+            startAireplayLoop: (win) => {
+                win.loopInterval = setInterval(() => {
+                    const data = win.loopData;
+                    data.current++;
+                    
+                    win.history.push({ 
+                        type: 'output', 
+                        text: `${new Date().toLocaleTimeString()}  Sending 64 directed DeAuth. STMAC: [Broadcast] [ ${data.current}|${data.infinite ? 'AC' : data.count} ACKs]` 
+                    });
+                    app.updateTerminalHistory(win);
+
+                    if (!data.infinite && data.current >= data.count) {
+                        app.stopLoop(win);
+                        // Trigger Handshake logic
+                        setTimeout(() => {
+                            if (appState.activeCapture && appState.activeCapture.bssid === data.bssid) {
+                                appState.handshakeCaptured = true;
+                                const filename = (appState.captureFileName || "capture") + ".cap";
+                                if (!appState.files.includes(filename)) appState.files.push(filename);
+                            }
+                        }, 1500);
+                    }
+                }, 300);
+            },
+
+            startCrackLoop: (win) => {
+                let i = 0;
+                win.loopInterval = setInterval(() => {
+                    if (i < WORDLIST.length) {
+                        const target = appState.networks.find(n => n.bssid === appState.activeCapture?.bssid);
+                        if (target && WORDLIST[i] === target.password) {
+                            clearInterval(win.loopInterval);
+                            win.loop = null;
+                            win.history.push({ type: 'output', text: `\n                                 KEY FOUND! [ ${target.password} ]\n` });
+                            app.updateTerminalHistory(win);
+                        }
+                        i++;
+                    } else {
+                        clearInterval(win.loopInterval);
+                        win.loop = null;
+                        win.history.push({ type: 'output', text: 'KEY NOT FOUND' });
+                        app.updateTerminalHistory(win);
+                    }
+                }, 400);
+            },
+
+            stopLoop: (win) => {
+                if (win.loopInterval) {
+                    clearInterval(win.loopInterval);
+                    win.loopInterval = null;
+                }
+                
+                // Infinite deauth stop logic
+                if (win.loop === 'aireplay' && win.loopData.infinite) {
+                     setTimeout(() => {
+                        if (appState.activeCapture && appState.activeCapture.bssid === win.loopData.bssid) {
+                            appState.handshakeCaptured = true;
+                            const filename = (appState.captureFileName || "capture") + ".cap";
+                            if (!appState.files.includes(filename)) appState.files.push(filename);
+                        }
+                     }, 1500);
+                }
+
+                // NEW: Logic to clear global capture state if the capturing window is stopped
+                if (win.loop === 'airodump' && win.loopData?.mode === 'targeted') {
+                    // If this window was the one tracking the global capture, clear it?
+                    // This prevents stale "active capture" state if the user stops the capture but runs deauth later.
+                    // However, for simplicity in this sim, we can check if the BSSID matches.
+                    if (appState.activeCapture && appState.activeCapture.bssid === win.loopData.target.bssid) {
+                        appState.activeCapture = null;
+                    }
+                }
+
+                win.loop = null;
+                win.history.push({ type: 'output', text: '^C' });
+                app.updateTerminalHistory(win);
+            },
+
+            // --- Drag & Drop ---
+            handleDragStart: (e, id) => {
+                const win = appState.windows.find(w => w.id === id);
+                if (win.maximized) return;
+
+                appState.dragState = {
+                    isDragging: true,
+                    winId: id,
+                    startX: e.clientX - win.x,
+                    startY: e.clientY - win.y
+                };
+            },
+
+            handleMouseMove: (e) => {
+                if (!appState.dragState.isDragging) return;
+                const { winId, startX, startY } = appState.dragState;
+                const win = appState.windows.find(w => w.id === winId);
+                if (win) {
+                    let newX = e.clientX - startX;
+                    let newY = e.clientY - startY;
+
+                    // Bounds checking
+                    if (newY < 32) newY = 32; // Top bar height
+                    if (newY > window.innerHeight - 40) newY = window.innerHeight - 40; // Bottom boundary
+                    if (newX < -win.width + 50) newX = -win.width + 50; // Left boundary
+                    if (newX > window.innerWidth - 50) newX = window.innerWidth - 50; // Right boundary
+
+                    win.x = newX;
+                    win.y = newY;
+                    const el = document.getElementById(`win-${winId}`);
+                    el.style.left = `${win.x}px`;
+                    el.style.top = `${win.y}px`;
+                }
+            },
+
+            handleMouseUp: () => {
+                appState.dragState.isDragging = false;
+            },
+
+            // --- Context Menu & Copy ---
+            handleContextMenu: (e) => {
+                e.preventDefault();
+                const selection = window.getSelection().toString();
+                if (selection) {
+                    appState.contextMenuText = selection;
+                    const menu = document.getElementById('context-menu');
+                    menu.style.display = 'block';
+                    menu.style.left = `${e.clientX}px`;
+                    menu.style.top = `${e.clientY}px`;
+                }
+            },
+
+            hideContextMenu: () => {
+                const menu = document.getElementById('context-menu');
+                menu.style.display = 'none';
+            },
+
+            copyToClipboard: (text) => {
+                if (!text) return;
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.position = "fixed";
+                textArea.style.left = "-9999px";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                } catch (err) { console.error(err); }
+                document.body.removeChild(textArea);
+                app.hideContextMenu();
+            }
+        };
+
+        // Initialize App
+        app.init();
+    </script>
+</body>
+</html>
